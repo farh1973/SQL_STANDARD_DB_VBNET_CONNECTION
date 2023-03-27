@@ -1,0 +1,144 @@
+    Private Sub Button9_Click(sender As System.Object, e As System.EventArgs) Handles BRDD.Click
+        Dim xlsExcel As Object
+        Dim wrkWorkbook As Object
+        Dim shtSheet As Object
+        Dim strFileName As String
+        Dim CN As New ADODB.Connection
+        Dim RS As New ADODB.Recordset
+        Dim T As Integer
+        Dim N As Integer
+        Dim RenP As Integer
+        Dim RenC As Integer
+        Dim RenS As Integer
+        Dim SITIO As String
+        Dim CADENA As String
+        Dim PropProg As Double
+
+        If Trim(TFileName.Text) = "" Then
+            MsgBox("Debe proporcionar el nombre y ruta del archivo!", MsgBoxStyle.Information)
+            'TFileName.Focus()
+            Call Button5_Click(sender, e)
+            Exit Sub
+        End If
+        Me.Cursor = Cursors.WaitCursor
+        strFileName = Trim(TFileName.Text)
+        'COPIAMOS LA PLANTILLA USANDO EL NOMBRE DEL NUEVO RDD
+        fsoMain.CopyFile(Plantilla, strFileName, True)
+
+        xlsExcel = CreateObject("Excel.Application")
+        xlsExcel.Visible = False
+        xlsExcel.DisplayAlerts = False
+        xlsExcel.AskToUpdateLinks = False
+        'ABRIMOS LAS TABLAS
+        CN.Open("Provider=SQLOLEDB.1;User ID=USUARIO;Pwd=GSM;Initial Catalog=BD_GSM_NEW;Data Source=SERVIDORIP\SQLEXPRESS")
+        'ABRIMOS SITIOS PRIMERO
+        RenP = 8
+        RenS = 8
+        RenC = 8
+        'ABRIMOS EL RDD
+        wrkWorkbook = xlsExcel.Workbooks.Open(strFileName)
+
+        PropProg = 100 / ListSeleccionados.Items.Count
+
+        For T = 0 To ListSeleccionados.Items.Count - 1
+
+            SITIO = Trim(ListSeleccionados.Items(T).Text)
+
+            GENERA_CONSECUTIVO("SIR", SITIO, ListSeleccionados.Items(T).SubItems(1).Text)
+
+            'If InStr(CTipoRDD.Text, "OUTDOOR") <> 0 Then
+
+            RS.Open(SQL_PROPIEDADES & SITIO & "'", CN, ADODB.CursorTypeEnum.adOpenKeyset, ADODB.LockTypeEnum.adLockOptimistic)
+                'LLENAMOS LA HOJA PROPIEDADES
+
+                'AGREGAMOS LA PROPIEDAD
+                For N = 0 To RS.Fields.Count - 1
+
+                    'SI EL SITIO ES U1900 PONEMOS EL ID DEL PADRE
+                    If RS.Fields(N).Name = "ID UMTS" Or RS.Fields(N).Name = "ID LTE" Or RS.Fields(N).Name = "ID GSM" Then
+                    If InStr(Trim(CStr(RS.Fields(N).Value)), "U1900") <> 0 Then
+                        'wrkWorkbook.Sheets("PROPIEDAD").CELLS(Ren, N + 1).value = Trim(CStr(RS.Fields("PROPIEDAD").Value)) & "U1900"
+                    Else
+                        'wrkWorkbook.Sheets("PROPIEDAD").CELLS(Ren, N + 1).value = RS.Fields(N).Value
+
+                    End If
+                    ElseIf RS.Fields(N).Name = "NOMBRE PROPIEDAD" Then
+                    If InStr(Trim(CStr(RS.Fields(N).Value)), " SAO") <> 0 Or InStr(Trim(CStr(RS.Fields(N).Value)), " U1900") <> 0 Then
+                        CADENA = CStr(RS.Fields(N).Value)
+                        CADENA = Replace(CADENA, " U1900", "")
+                        CADENA = Replace(CADENA, " SAO", "")
+                        wrkWorkbook.Sheets("PROPIEDAD").CELLS(RenP, N + 1).value = CADENA
+                    Else
+                        wrkWorkbook.Sheets("PROPIEDAD").CELLS(RenP, N + 1).value = RS.Fields(N).Value
+
+                    End If
+                    Else
+                    wrkWorkbook.Sheets("PROPIEDAD").CELLS(RenP, N + 1).value = RS.Fields(N).Value
+                End If
+
+                Next
+                RenP = RenP + 1
+
+            RS.Close()
+            'End If
+
+            'ABRIMOS SITIOS
+            RS.Open(SQL_SITIOS & SITIO & "'", CN, ADODB.CursorTypeEnum.adOpenKeyset, ADODB.LockTypeEnum.adLockOptimistic)
+            'LLENAMOS LA HOJA SITIO
+            Do While Not RS.EOF
+                For N = 0 To RS.Fields.Count - 1
+                    'SI EL SITIO ES U1900 PONEMOS EL ID DEL PADRE
+                    If RS.Fields(N).Name = "ID UMTS" Then
+                        If InStr(Trim(CStr(RS.Fields(N).Value)), "U1900") <> 0 Then
+                            wrkWorkbook.Sheets("SITIOS").CELLS(RenS, N + 1).value = Trim(CStr(RS.Fields("PROPIEDAD").Value)) & "U1900"
+                        Else
+                            wrkWorkbook.Sheets("SITIOS").CELLS(RenS, N + 1).value = RS.Fields(N).Value
+
+                        End If
+                    Else
+                        wrkWorkbook.Sheets("SITIOS").CELLS(RenS, N + 1).value = RS.Fields(N).Value
+                    End If
+                Next
+                RenS = RenS + 1
+
+                RS.MoveNext()
+            Loop
+            RS.Close()
+
+            'ABRIMOS CELDAS
+            RS.Open(SQL_CELDAS & SITIO & "'", CN, ADODB.CursorTypeEnum.adOpenKeyset, ADODB.LockTypeEnum.adLockOptimistic)
+            'LLENAMOS LA HOJA CELDA
+            Do While Not RS.EOF
+                For N = 0 To RS.Fields.Count - 1
+                    'SI EL SITIO ES U1900 PONEMOS EL ID DEL PADRE
+                    If RS.Fields(N).Name = "SITIO" Then
+                        If InStr(Trim(CStr(RS.Fields(N).Value)), "U1900") <> 0 Then
+                            wrkWorkbook.Sheets("CELDA").CELLS(RenC, N + 1).value = Trim(CStr(RS.Fields("PROPIEDAD").Value)) & "U1900"
+                        Else
+                            wrkWorkbook.Sheets("CELDA").CELLS(RenC, N + 1).value = RS.Fields(N).Value
+
+                        End If
+                    Else
+                        wrkWorkbook.Sheets("CELDA").CELLS(RenC, N + 1).value = RS.Fields(N).Value
+                    End If
+                Next
+                RenC = RenC + 1
+
+
+                ProgressBar1.Value = CInt(PropProg + (T * PropProg))
+
+
+                RS.MoveNext()
+            Loop
+            RS.Close()
+        Next T
+
+        wrkWorkbook.Save()
+        wrkWorkbook.Close()
+        xlsExcel.Quit()
+        xlsExcel = Nothing
+        wrkWorkbook = Nothing
+        shtSheet = Nothing
+        Me.Cursor = Cursors.Default
+        MsgBox("RDD creado exitosamente!", MsgBoxStyle.Exclamation)
+    End Sub
